@@ -90,7 +90,16 @@ if (isset($_GET['edit'])) {
 <?php include __DIR__ . '/includes/header.php'; ?>
 
 <main class="container">
-    <h1>Mini CRUD de tareas (sin base de datos)</h1>
+    <?php $totalTasks = count($tasks); ?>
+
+
+
+
+
+
+
+    <h1>Mini CRUD de Tareas (<?php echo $totalTasks; ?> tareas)</h1>
+
     <p class="subtitle">
         Este proyecto simula un CRUD sencillo usando PHP y un archivo JSON como "almacén" de datos.
     </p>
