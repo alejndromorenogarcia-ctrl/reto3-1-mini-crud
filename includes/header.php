@@ -7,9 +7,10 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<header class="site-header">
-    <div class="container header-content">
-        <h1 class="logo">Mini CRUD PHP</h1>
+    <div class="container">
+        <div class="header-bar">
+            <h1>Mini CRUD de tareas</h1>
+            <h1 class="logo">Mini CRUD PHP de Tareas</h1>
         <nav>
             <p class="intro">
                 Este mini CRUD forma parte del Reto 3.1 (proyecto colaborativo en Git).
@@ -18,5 +19,8 @@
             <a href="index.php">Inicio</a>
             <a href="#about">Sobre el proyecto</a>
         </nav>
-    </div>
+        </div>
+
 </header>
+
+ 
