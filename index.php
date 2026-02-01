@@ -1,185 +1,191 @@
 <?php
-session_start();
+// ---------------------------------------------
+// Configuración básica
+// ---------------------------------------------
+$dataFile = __DIR__ . '/data/tasks.json';
 
-function load_tasks() {
-    $file = __DIR__ . '/data/tasks.json';
-    if (!file_exists($file)) {
-        return [];
-    }
-    $json = file_get_contents($file);
-    $data = json_decode($json, true);
-    return is_array($data) ? $data : [];
+// Cargar tareas desde el fichero JSON
+if (file_exists($dataFile)) {
+    $json   = file_get_contents($dataFile);
+    $tasks  = json_decode($json, true) ?? [];
+} else {
+    $tasks = [];
 }
 
-function save_tasks($tasks) {
-    $file = __DIR__ . '/data/tasks.json';
+// Función para guardar tareas
+function saveTasks($file, $tasks)
+{
     file_put_contents($file, json_encode($tasks, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
-$tasks = load_tasks();
-$message = '';
+// ---------------------------------------------
+// Lógica de acciones (crear / actualizar / borrar)
+// ---------------------------------------------
+$editTask = null;
 
+// Crear o actualizar tarea (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? '';
 
-    if ($action === 'create') {
-        $title = trim($_POST['title'] ?? '');
-        $description = trim($_POST['description'] ?? '');
+    $id          = isset($_POST['id']) && $_POST['id'] !== '' ? (int) $_POST['id'] : null;
+    $title       = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    // CAMBIO PASO 3: prioridad
+    $priority    = $_POST['priority'] ?? 'media';
 
-        if ($title === '') {
-            $message = 'El título es obligatorio para crear una tarea.';
-        } else {
-            $newId = time();
+    if ($title === '') {
+        $errorMessage = 'El título es obligatorio.';
+    } else {
+        if ($id === null) {
+            // Crear nueva tarea
+            $newId = empty($tasks) ? 1 : (max(array_column($tasks, 'id')) + 1);
+
             $tasks[] = [
-                'id' => $newId,
-                'title' => $title,
-                'description' => $description
+                'id'          => $newId,
+                'title'       => $title,
+                'description' => $description,
+                'priority'    => $priority   // CAMBIO PASO 3
             ];
-            save_tasks($tasks);
-            $message = 'Tarea creada correctamente.';
-        }
-    }
-
-    if ($action === 'update') {
-        $id = $_POST['id'] ?? null;
-        $title = trim($_POST['title'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-
-        if ($id !== null) {
-            foreach ($tasks as &$task) {
-                if ((string)$task['id'] === (string)$id) {
-                    $task['title'] = $title;
-                    $task['description'] = $description;
-                    $message = 'Tarea actualizada correctamente.';
+        } else {
+            // Actualizar tarea existente
+            foreach ($tasks as $index => $task) {
+                if ($task['id'] === $id) {
+                    $tasks[$index]['title']       = $title;
+                    $tasks[$index]['description'] = $description;
+                    $tasks[$index]['priority']    = $priority; // CAMBIO PASO 3
                     break;
                 }
             }
-            unset($task);
-            save_tasks($tasks);
         }
-    }
 
-    if ($action === 'delete') {
-        $id = $_POST['id'] ?? null;
-        if ($id !== null) {
-            $tasks = array_values(array_filter($tasks, function ($task) use ($id) {
-                return (string)$task['id'] !== (string)$id;
-            }));
-            save_tasks($tasks);
-            $message = 'Tarea eliminada correctamente.';
-        }
+        saveTasks($dataFile, $tasks);
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
     }
+}
 
-    // Recargar para evitar reenvío de formularios al refrescar
+// Eliminar tarea (GET ?delete=ID)
+if (isset($_GET['delete'])) {
+    $deleteId = (int) $_GET['delete'];
+    $tasks = array_values(array_filter($tasks, fn($t) => $t['id'] !== $deleteId));
+    saveTasks($dataFile, $tasks);
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
 
-$tasks = load_tasks();
-$editTask = null;
+// Preparar edición (GET ?edit=ID)
 if (isset($_GET['edit'])) {
-    $editId = $_GET['edit'];
+    $editId = (int) $_GET['edit'];
     foreach ($tasks as $task) {
-        if ((string)$task['id'] === (string)$editId) {
+        if ($task['id'] === $editId) {
             $editTask = $task;
             break;
         }
     }
 }
+
+// Contador de tareas (lo usabas en otro cambio, lo dejo ya aquí preparado)
+$totalTasks = count($tasks);
 ?>
-<?php include __DIR__ . '/includes/header.php'; ?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini CRUD de tareas</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mini CRUD de tareas (<?php echo $totalTasks; ?> tareas)</h1>
 
-<main class="container">
-    <?php $totalTasks = count($tasks); ?>
+        <?php if (!empty($errorMessage)): ?>
+            <p style="color: red;"><?php echo htmlspecialchars($errorMessage); ?></p>
+        <?php endif; ?>
 
+        <section class="form-section">
+            <h2><?php echo $editTask ? 'Editar tarea' : 'Nueva tarea'; ?></h2>
 
+            <form method="POST" action="">
+                <input type="hidden" name="id" value="<?php echo $editTask['id'] ?? ''; ?>">
 
+                <div class="form-group">
+                    <label for="title">Título</label>
+                    <input
+                        type="text"
+                        name="title"
+                        id="title"
+                        value="<?php echo htmlspecialchars($editTask['title'] ?? ''); ?>"
+                        required
+                    >
+                </div>
 
+                <div class="form-group">
+                    <label for="description">Descripción</label>
+                    <textarea
+                        name="description"
+                        id="description"
+                        rows="3"
+                    ><?php echo htmlspecialchars($editTask['description'] ?? ''); ?></textarea>
+                </div>
 
+                <!-- CAMBIO PASO 3: campo PRIORIDAD -->
+                <div class="form-group">
+                    <label for="priority">Prioridad</label>
+                    <select name="priority" id="priority">
+                        <?php
+                        $currentPriority = $editTask['priority'] ?? 'media';
+                        ?>
+                        <option value="baja"  <?php echo $currentPriority === 'baja'  ? 'selected' : ''; ?>>Baja</option>
+                        <option value="media" <?php echo $currentPriority === 'media' ? 'selected' : ''; ?>>Media</option>
+                        <option value="alta"  <?php echo $currentPriority === 'alta'  ? 'selected' : ''; ?>>Alta</option>
+                    </select>
+                </div>
+                <!-- FIN CAMBIO PASO 3 -->
 
-
-    <h1>Mini CRUD de Tareas (<?php echo $totalTasks; ?> tareas)</h1>
-
-    <p class="subtitle">
-        Este proyecto simula un CRUD sencillo usando PHP y un archivo JSON como "almacén" de datos.
-    </p>
-
-    <?php if (!empty($message)): ?>
-        <div class="alert">
-            <?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?>
-        </div>
-    <?php endif; ?>
-
-    <section class="crud-layout">
-        <div class="crud-column">
-            <h2><?php echo $editTask ? 'Editar tarea' : 'Crear nueva tarea'; ?></h2>
-            <form method="post" class="card">
-                <input type="hidden" name="action" value="<?php echo $editTask ? 'update' : 'create'; ?>">
-                <?php if ($editTask): ?>
-                    <input type="hidden" name="id" value="<?php echo htmlspecialchars($editTask['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                <?php endif; ?>
-
-                <label for="title">Título</label>
-                <input
-                    type="text"
-                    id="title"
-                    name="title"
-                    required
-                    value="<?php echo $editTask ? htmlspecialchars($editTask['title'], ENT_QUOTES, 'UTF-8') : ''; ?>"
-                >
-
-                <label for="description">Descripción</label>
-                <textarea
-                    id="description"
-                    name="description"
-                    rows="4"
-                ><?php echo $editTask ? htmlspecialchars($editTask['description'], ENT_QUOTES, 'UTF-8') : ''; ?></textarea>
-
-                <button type="submit" class="btn primary">
-                    <?php echo $editTask ? 'Guardar cambios' : 'Crear tarea'; ?>
+                <button type="submit">
+                    <?php echo $editTask ? 'Guardar cambios' : 'Añadir tarea'; ?>
                 </button>
-
-                <?php if ($editTask): ?>
-                    <a href="<?php echo $_SERVER['PHP_SELF']; ?>" class="btn secondary block">Cancelar edición</a>
-                <?php endif; ?>
             </form>
-        </div>
+        </section>
 
-        <div class="crud-column">
+        <section class="list-section">
             <h2>Listado de tareas</h2>
 
             <?php if (empty($tasks)): ?>
-                <p>No hay tareas todavía. Crea la primera usando el formulario de la izquierda.</p>
+                <p>No hay tareas todavía.</p>
             <?php else: ?>
-                <table class="tasks-table">
+                <table>
                     <thead>
                         <tr>
+                            <th>ID</th>
                             <th>Título</th>
                             <th>Descripción</th>
-                            <th class="col-actions">Acciones</th>
+                            <th>Prioridad</th> <!-- CAMBIO PASO 3 -->
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($tasks as $task): ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                <td><?php echo nl2br(htmlspecialchars($task['description'], ENT_QUOTES, 'UTF-8')); ?></td>
-                                <td class="col-actions">
-                                    <a href="?edit=<?php echo urlencode($task['id']); ?>" class="btn small">Editar</a>
-
-                                    <form method="post" class="inline-form" onsubmit="return confirm('¿Seguro que quieres eliminar esta tarea?');">
-                                        <input type="hidden" name="action" value="delete">
-                                        <input type="hidden" name="id" value="<?php echo htmlspecialchars($task['id'], ENT_QUOTES, 'UTF-8'); ?>">
-                                        <button type="submit" class="btn small danger">Eliminar</button>
-                                    </form>
+                                <td><?php echo $task['id']; ?></td>
+                                <td><?php echo htmlspecialchars($task['title']); ?></td>
+                                <td><?php echo htmlspecialchars($task['description']); ?></td>
+                                <!-- CAMBIO PASO 3: mostrar prioridad -->
+                                <td><?php echo htmlspecialchars($task['priority'] ?? 'media'); ?></td>
+                                <td>
+                                    <a href="?edit=<?php echo $task['id']; ?>">Editar</a>
+                                    |
+                                    <a href="?delete=<?php echo $task['id']; ?>"
+                                       onclick="return confirm('¿Seguro que quieres eliminar esta tarea?');">
+                                        Eliminar
+                                    </a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             <?php endif; ?>
-        </div>
-    </section>
-</main>
-
-<?php include __DIR__ . '/includes/footer.php'; ?>
+        </section>
+    </div>
+</body>
+</html>
+<?php include 'includes/header.php'; ?>
