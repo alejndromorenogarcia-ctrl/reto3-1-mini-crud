@@ -11,6 +11,10 @@
     <div class="container header-content">
         <h1 class="logo">Mini CRUD PHP</h1>
         <nav>
+            <p class="intro">
+                Este mini CRUD forma parte del Reto 3.1 (proyecto colaborativo en Git).
+            </p>
+
             <a href="index.php">Inicio</a>
             <a href="#about">Sobre el proyecto</a>
         </nav>
