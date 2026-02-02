@@ -1,4 +1,14 @@
+<?php
+// index.php
+session_start();
 
+// Inicializar array de tareas
+if (!isset($_SESSION['tasks'])) {
+    $_SESSION['tasks'] = [];
+}
+
+$message = '';
+$messageType = ''; // success | error
 
 // === CREAR / EDITAR TAREA ===
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
