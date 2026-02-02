@@ -128,7 +128,7 @@ include 'includes/header.php';
     </form>
 
     <!-- Listado de tareas -->
-    <h2>Listado de tareas</h2>
+    <h1>Lista del mini crud de las tareas</h1>
 
     <?php if (count($tasks) > 0): ?>
         <table>
