@@ -161,7 +161,8 @@ include 'includes/header.php';
             </tbody>
         </table>
     <?php else: ?>
-        <p>No hay tareas todavía. Añade la primera usando el formulario de arriba.</p>
+        <h1>No hay tareas</h1>
+        
     <?php endif; ?>
 </div>
 
